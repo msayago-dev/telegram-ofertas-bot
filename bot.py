@@ -63,45 +63,28 @@ def fmt_caption(title, cat, orig, offer, currency, discount_pct, link, fuente):
 def get_amazon_deals():
     print("Buscando ofertas en Amazon...")
     deals = []
-    searches = [
-        ("Tecnología", "Electronics", ["ssd", "monitor", "ratón", "teclado", "smartwatch"]),
-        ("Salud", "HealthPersonalCare", ["cepillo dental", "masajeador", "oxímetro", "vitamina"]),
-        ("Moda", "Fashion", ["zapatillas", "chaqueta", "mochila", "reloj"])
-    ]
-    for cat_name, index, kws in searches:
-        for kw in kws:
-            try:
-                res = AMZ.search_items(keywords=kw, search_index=index, item_count=10)
-            except Exception as e:
-                print(f"[ERROR AMAZON] Al buscar '{kw}': {e}")
-                continue
-            for it in getattr(res, "items", []) or []:
-                try:
-                    price = it.offers.listings[0].price
-                    if price.savings and price.savings.amount and price.savings.percentage:
-                        if int(price.savings.percentage) >= MIN_DISCOUNT:
-                            deals.append({
-                                "source": "Amazon", "category": cat_name, "title": it.item_info.title.display_value,
-                                "image": it.images.primary.large.url, "orig": float(price.savings.baseline_amount), 
-                                "offer": float(price.amount), "currency": price.currency, 
-                                "discount": int(price.savings.percentage), "url": it.detail_page_url
-                            })
-                except Exception: continue
+    # (En el futuro, puedes aplicar filtros similares a los de AliExpress aquí también)
     print(f"Encontradas {len(deals)} ofertas en Amazon.")
     return deals
 
 def get_aliexpress_deals():
-    print("Buscando ofertas en AliExpress...")
+    print("Buscando ofertas en AliExpress con filtros avanzados...")
     deals = []
-    # kws = ["auriculares bluetooth", "ssd", "zapatillas", "smartwatch", "masajeador", "monitor"]
-    kws = ["Tecnología", "Electronics", "ssd", "monitor", "ratón", "teclado", "smartwatch",
-           "Salud", "HealthPersonalCare", "cepillo dental", "masajeador", "oxímetro", 
-           "Moda", "Fashion", "reloj"]
-
+    kws = [
+        "cargador GaN 100W", "power bank magnética", "mini proyector portátil 4K",
+        "teclado mecánico inalámbrico", "ratón vertical ergonómico", "cámara de seguridad WiFi exterior",
+        "auriculares con cancelación de ruido activa", "rastreador de objetos Bluetooth",
+        "pistola de masaje muscular", "masajeador de cuello shiatsu", "cepillo de dientes sónico",
+        "irrigador dental portátil", "rodillo de jade facial", "humidificador ultrasónico",
+        "corrector de postura inteligente", "mochila antirrobo para portátil", "reloj inteligente con NFC",
+        "gafas de luz azul", "cinturón de cuero automático", "chaqueta cortavientos impermeable", "zapatillas de trekking"
+    ]
+    
     # --- FILTROS DE SENTIDO COMÚN ---
     MAX_ORIGINAL_PRICE = int(os.getenv("MAX_ORIGINAL_PRICE", 300.0)) # No mostrar ofertas con precio original > 300€
-    MAX_DISCOUNT_PERCENTAGE = int(os.getenv("MAX_DISCOUNT_PERCENTAGE", 85)) # No mostrar ofertas con más de 85% de descuento
-    
+    MAX_DISCOUNT_PERCENTAGE = int(os.getenv("MAX_DISCOUNT_PERCENTAGE", 60)) # No mostrar ofertas con más de 85% de descuento
+    MIN_ORDERS = int(os.getenv("MAX_ORIGINAL_PRICE", 50)) # El producto debe tener al menos 50 ventas
+    MIN_RATING = int(os.getenv("MAX_DISCOUNT_PERCENTAGE", 4.5)) # La valoración media debe ser de 4.5 estrellas o más
 
     for kw in kws:
         try:
@@ -114,22 +97,15 @@ def get_aliexpress_deals():
                 orig = float(p.original_price) if p.original_price else None
                 offer = float(p.target_sale_price) if p.target_sale_price else None
                 
-                if not (orig and offer): continue
+                if not (orig and offer) or orig > MAX_ORIGINAL_PRICE: continue
 
-                # --- APLICACIÓN DE LOS NUEVOS FILTROS ---
-                if orig > MAX_ORIGINAL_PRICE:
-                    # print(f"[FILTRADO] Precio original demasiado alto: {p.product_title} ({orig}€)")
-                    continue
+                product_rating = float(getattr(p, 'evaluate_rate', '0.0').replace('%', '')) / 20.0
+                orders_count = int(getattr(p, 'sale_volume', 0))
 
-                d = None
-                if getattr(p, "discount", None): d = int(str(p.discount).replace("%",""))
-                elif orig > offer: d = pct(offer, orig)
-                
-                if not (d and d >= MIN_DISCOUNT): continue
+                if orders_count < MIN_ORDERS or product_rating < MIN_RATING: continue
 
-                if d > MAX_DISCOUNT_PERCENTAGE:
-                    # print(f"[FILTRADO] Descuento irreal: {p.product_title} ({d}%)")
-                    continue
+                d = pct(offer, orig)
+                if not (d and d >= MIN_DISCOUNT and d <= MAX_DISCOUNT_PERCENTAGE): continue
 
                 link_list = ALX.get_affiliate_links(p.product_detail_url)
                 if not link_list: continue
@@ -139,8 +115,11 @@ def get_aliexpress_deals():
                     "image": p.product_main_image_url, "orig": orig, "offer": offer,
                     "currency": "€", "discount": int(d), "url": link_list[0].promotion_link
                 })
-            except Exception: continue
-    print(f"Encontradas {len(deals)} ofertas en AliExpress (después de filtrar).")
+            except Exception as e:
+                print(f"[ERROR] Procesando producto de AliExpress: {e}")
+                continue
+            
+    print(f"Encontradas {len(deals)} ofertas en AliExpress (después de todos los filtros).")
     return deals
 
 def main():
@@ -166,5 +145,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

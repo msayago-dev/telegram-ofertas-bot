@@ -17,6 +17,8 @@ def escape_mdv2(text: str) -> str:
 def post_telegram(photo_url: str, caption_md: str):
     url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendPhoto"
     print(f" -> URL: {url}")
+    print(f" -> photo: {photo_url}")
+    print(f" -> caption: {caption_md}")
     data = {
         "chat_id": TG_CHANNEL_ID,
         "photo": photo_url,
@@ -175,4 +177,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

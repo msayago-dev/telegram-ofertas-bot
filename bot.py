@@ -16,16 +16,18 @@ def escape_mdv2(text: str) -> str:
 
 def post_telegram(photo_url: str, caption_md: str):
     url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendPhoto"
-    print(f" -> URL: {url}")
-    print(f" -> photo: {photo_url}")
-    print(f" -> caption: {caption_md}")
     data = {
         "chat_id": TG_CHANNEL_ID,
         "photo": photo_url,
         "caption": caption_md,
         "parse_mode": "MarkdownV2",
-        "disable_web_page_preview": False # Ponemos a False para que el link se vea mejor
+        "disable_web_page_preview": False
     }
+    
+    print(f" -> URL: {url}")
+    print(f" -> photo: {photo_url}")
+    print(f" -> caption: {caption}")
+    
     r = requests.post(url, data=data, timeout=30)
     if r.status_code != 200:
         print(f" -> [ERROR TELEGRAM] Fallo al publicar: {r.status_code} - {r.text}")
@@ -67,19 +69,20 @@ def now_cet_str():
     return datetime.now(cet).strftime("%d/%m %H:%M")
 
 def fmt_caption(title, cat, orig, offer, currency, discount_pct, link, fuente):
-    # --- FUNCIÓN CORREGIDA PARA SOLUCIONAR EL ERROR DEL '.' ---
+    # --- VERSIÓN FINAL CORREGIDA ---
     
-    # 1. Escapar el texto que puede contener caracteres especiales
+    # 1. Escapar texto que puede contener caracteres especiales
     escaped_title = escape_mdv2(title[:120])
     escaped_cat = escape_mdv2(cat)
-    
-    # 2. Formatear precios (los puntos decimales son seguros, no se escapan)
-    orig_price_str = f"{orig:.2f}"
-    offer_price_str = f"{offer:.2f}"
     escaped_currency = escape_mdv2(currency)
+    
+    # 2. CORRECCIÓN CLAVE: Formatear precios y LUEGO escapar el resultado
+    orig_price_str = escape_mdv2(f"{orig:.2f}")
+    offer_price_str = escape_mdv2(f"{offer:.2f}")
 
-    # 3. Construir las líneas con una mezcla de Markdown y texto escapado
+    # 3. Construir las líneas
     line1 = f"🛍️ *{escaped_title}* — _{escaped_cat}_"
+    # El `(−{discount_pct}%)` está en un bloque de código (backticks), por lo que no necesita escape
     line2 = f"~{orig_price_str}{escaped_currency}~ ➜ *{offer_price_str}{escaped_currency}* `(−{discount_pct}%)`"
     
     # El formato del link [texto](url) no debe ser escapado
@@ -92,10 +95,10 @@ def fmt_caption(title, cat, orig, offer, currency, discount_pct, link, fuente):
     
     return "\n".join([line1, line2, line3, "\n" + line4, line5, line6])
 
+
 def get_amazon_deals():
     print("Buscando ofertas en Amazon...")
     deals = []
-    # (El resto de la función es correcta, la dejamos como está)
     searches = [
         ("Tecnología", "Electronics", ["ssd", "monitor", "ratón", "teclado", "smartwatch"]),
         ("Salud", "HealthPersonalCare", ["cepillo dental", "masajeador", "oxímetro", "vitamina"]),
@@ -112,12 +115,13 @@ def get_amazon_deals():
                 try:
                     price = it.offers.listings[0].price
                     if price.savings and price.savings.amount and price.savings.percentage:
-                        deals.append({
-                            "source": "Amazon", "category": cat_name, "title": it.item_info.title.display_value,
-                            "image": it.images.primary.large.url, "orig": float(price.savings.baseline_amount), 
-                            "offer": float(price.amount), "currency": price.currency, 
-                            "discount": int(price.savings.percentage), "url": it.detail_page_url
-                        })
+                        if int(price.savings.percentage) >= MIN_DISCOUNT:
+                            deals.append({
+                                "source": "Amazon", "category": cat_name, "title": it.item_info.title.display_value,
+                                "image": it.images.primary.large.url, "orig": float(price.savings.baseline_amount), 
+                                "offer": float(price.amount), "currency": price.currency, 
+                                "discount": int(price.savings.percentage), "url": it.detail_page_url
+                            })
                 except Exception: continue
     print(f"Encontradas {len(deals)} ofertas en Amazon.")
     return deals
@@ -125,7 +129,6 @@ def get_amazon_deals():
 def get_aliexpress_deals():
     print("Buscando ofertas en AliExpress...")
     deals = []
-    # (El resto de la función es correcta, la dejamos como está)
     kws = ["auriculares bluetooth", "ssd", "zapatillas", "smartwatch", "masajeador", "monitor"]
     for kw in kws:
         try:
@@ -177,5 +180,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

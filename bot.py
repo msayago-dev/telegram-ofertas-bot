@@ -83,8 +83,8 @@ def get_aliexpress_deals():
     # --- FILTROS DE SENTIDO COMÚN ---
     MAX_ORIGINAL_PRICE = int(os.getenv("MAX_ORIGINAL_PRICE", 300.0)) # No mostrar ofertas con precio original > 300€
     MAX_DISCOUNT_PERCENTAGE = int(os.getenv("MAX_DISCOUNT_PERCENTAGE", 60)) # No mostrar ofertas con más de 85% de descuento
-    MIN_ORDERS = int(os.getenv("MAX_ORIGINAL_PRICE", 50)) # El producto debe tener al menos 50 ventas
-    MIN_RATING = int(os.getenv("MAX_DISCOUNT_PERCENTAGE", 4.5)) # La valoración media debe ser de 4.5 estrellas o más
+    MIN_ORDERS = int(os.getenv("MIN_ORDERS", 50)) # El producto debe tener al menos 50 ventas
+    MIN_RATING = int(os.getenv("MIN_RATING", 4.5)) # La valoración media debe ser de 4.5 estrellas o más
 
     for kw in kws:
         try:
@@ -145,3 +145,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

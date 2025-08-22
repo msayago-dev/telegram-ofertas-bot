@@ -93,7 +93,10 @@ def get_amazon_deals():
 def get_aliexpress_deals():
     print("Buscando ofertas en AliExpress...")
     deals = []
-    kws = ["auriculares bluetooth", "ssd", "zapatillas", "smartwatch", "masajeador", "monitor"]
+    # kws = ["auriculares bluetooth", "ssd", "zapatillas", "smartwatch", "masajeador", "monitor"]
+    kws = ["Tecnología", "Electronics", "ssd", "monitor", "ratón", "teclado", "smartwatch",
+           "Salud", "HealthPersonalCare", "cepillo dental", "masajeador", "oxímetro", 
+           "Moda", "Fashion", "reloj"]
 
     # --- FILTROS DE SENTIDO COMÚN ---
     MAX_ORIGINAL_PRICE = int(os.getenv("MAX_ORIGINAL_PRICE", 300.0)) # No mostrar ofertas con precio original > 300€
@@ -163,4 +166,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 

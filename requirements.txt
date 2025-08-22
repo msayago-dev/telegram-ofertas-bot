@@ -1,0 +1,4 @@
+python-amazon-paapi==5.0.1
+python-aliexpress-api==3.1.0
+requests==2.31.0
+pytz==2024.1

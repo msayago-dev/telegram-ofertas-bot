@@ -27,6 +27,6 @@ jobs:
           ALX_APP_KEY: ${{ secrets.ALX_APP_KEY }}
           ALX_SECRET: ${{ secrets.ALX_SECRET }}
           ALX_PID: ${{ secrets.ALX_PID }}
-          MIN_DISCOUNT: "25"
+          MIN_DISCOUNT: "5"
           MAX_POSTS: "8"
         run: python bot.py

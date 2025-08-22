@@ -26,7 +26,7 @@ def post_telegram(photo_url: str, caption_md: str):
     
     print(f" -> URL: {url}")
     print(f" -> photo: {photo_url}")
-    print(f" -> caption: {caption}")
+    print(f" -> caption: {caption_md}")
     
     r = requests.post(url, data=data, timeout=30)
     if r.status_code != 200:
@@ -180,3 +180,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

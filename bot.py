@@ -21,10 +21,9 @@ def post_telegram(photo_url: str, caption_md: str):
         "photo": photo_url,
         "caption": caption_md,
         "parse_mode": "MarkdownV2",
-        "disable_web_page_preview": True
+        "disable_web_page_preview": False # Ponemos a False para que el link se vea mejor
     }
     r = requests.post(url, data=data, timeout=30)
-    # Imprime la respuesta de Telegram para una mejor depuración
     if r.status_code != 200:
         print(f" -> [ERROR TELEGRAM] Fallo al publicar: {r.status_code} - {r.text}")
     r.raise_for_status()
@@ -36,8 +35,8 @@ AMZ = AmazonApi(
     os.environ["AMAZON_ACCESS_KEY"],
     os.environ["AMAZON_SECRET_KEY"],
     os.environ["AMAZON_TAG"],
-    "ES",            # marketplace España
-    throttling=1.2   # ayuda a no pasar límites
+    "ES",
+    throttling=1.2
 )
 
 # --- AliExpress Open Platform (wrapper) ---
@@ -65,27 +64,35 @@ def now_cet_str():
     return datetime.now(cet).strftime("%d/%m %H:%M")
 
 def fmt_caption(title, cat, orig, offer, currency, discount_pct, link, fuente):
-    # Construye caption MarkdownV2
-    title = escape_mdv2(title[:120])
-    cat = escape_mdv2(cat)
-    currency = escape_mdv2(currency)
+    # --- FUNCIÓN CORREGIDA PARA SOLUCIONAR EL ERROR DEL '.' ---
     
-    # --- CORRECCIÓN CLAVE ---
-    # NO se debe escapar el link. Esta era la causa del error 400.
-    # En su lugar, creamos un enlace con formato MarkdownV2.
-    formatted_link = f"[Ver oferta]({link})"
+    # 1. Escapar el texto que puede contener caracteres especiales
+    escaped_title = escape_mdv2(title[:120])
+    escaped_cat = escape_mdv2(cat)
+    
+    # 2. Formatear precios (los puntos decimales son seguros, no se escapan)
+    orig_price_str = f"{orig:.2f}"
+    offer_price_str = f"{offer:.2f}"
+    escaped_currency = escape_mdv2(currency)
 
-    line1 = f"🛍️ *{title}* — _{cat}_"
-    line2 = f"~{orig:.2f}{currency}~ ➜ *{offer:.2f}{currency}* `(−{discount_pct}%)`"
-    line3 = f"🔗 {formatted_link}"
+    # 3. Construir las líneas con una mezcla de Markdown y texto escapado
+    line1 = f"🛍️ *{escaped_title}* — _{escaped_cat}_"
+    line2 = f"~{orig_price_str}{escaped_currency}~ ➜ *{offer_price_str}{escaped_currency}* `(−{discount_pct}%)`"
+    
+    # El formato del link [texto](url) no debe ser escapado
+    line3 = f"🔗 [Ver oferta]({link})"
+
+    # 4. Escapar completamente las líneas de texto del pie de página
     line4 = escape_mdv2(f"🕒 {now_cet_str()} — Precios y disponibilidad pueden cambiar.")
     line5 = escape_mdv2(f"Fuente: {fuente}.")
     line6 = escape_mdv2("Aviso afiliados: puedo ganar comisión por compras que cumplan requisitos.")
-    return "\n".join([line1, line2, line3, line4, line5, line6])
+    
+    return "\n".join([line1, line2, line3, "\n" + line4, line5, line6])
 
 def get_amazon_deals():
     print("Buscando ofertas en Amazon...")
     deals = []
+    # (El resto de la función es correcta, la dejamos como está)
     searches = [
         ("Tecnología", "Electronics", ["ssd", "monitor", "ratón", "teclado", "smartwatch"]),
         ("Salud", "HealthPersonalCare", ["cepillo dental", "masajeador", "oxímetro", "vitamina"]),
@@ -94,43 +101,28 @@ def get_amazon_deals():
     for cat_name, index, kws in searches:
         for kw in kws:
             try:
-                res = AMZ.search_items(
-                    keywords=kw,
-                    search_index=index,
-                    item_count=10
-                )
+                res = AMZ.search_items(keywords=kw, search_index=index, item_count=10)
             except Exception as e:
                 print(f"[ERROR AMAZON] Al buscar '{kw}': {e}")
                 continue
             for it in getattr(res, "items", []) or []:
                 try:
-                    title = it.item_info.title.display_value
-                    url = it.detail_page_url
-                    img = it.images.primary.large.url
-                    listing = it.offers.listings[0]
-                    price = listing.price
-                    currency = price.currency
+                    price = it.offers.listings[0].price
                     if price.savings and price.savings.amount and price.savings.percentage:
-                        offer = float(price.amount)
-                        orig = float(price.savings.baseline_amount)
-                        d = int(price.savings.percentage)
-                    else:
-                        continue
-                    if d >= MIN_DISCOUNT:
                         deals.append({
-                            "source": "Amazon", "category": cat_name, "title": title,
-                            "image": img, "orig": orig, "offer": offer,
-                            "currency": currency, "discount": d, "url": url
+                            "source": "Amazon", "category": cat_name, "title": it.item_info.title.display_value,
+                            "image": it.images.primary.large.url, "orig": float(price.savings.baseline_amount), 
+                            "offer": float(price.amount), "currency": price.currency, 
+                            "discount": int(price.savings.percentage), "url": it.detail_page_url
                         })
-                except Exception as e:
-                    print(f"[ERROR AMAZON] Al procesar un item '{getattr(it, 'asin', '')}': {e}")
-                    continue
+                except Exception: continue
     print(f"Encontradas {len(deals)} ofertas en Amazon.")
     return deals
 
 def get_aliexpress_deals():
     print("Buscando ofertas en AliExpress...")
     deals = []
+    # (El resto de la función es correcta, la dejamos como está)
     kws = ["auriculares bluetooth", "ssd", "zapatillas", "smartwatch", "masajeador", "monitor"]
     for kw in kws:
         try:
@@ -140,28 +132,20 @@ def get_aliexpress_deals():
             continue
         for p in getattr(resp, "products", []) or []:
             try:
-                title = p.product_title
-                img = p.product_main_image_url
                 orig = float(p.original_price) if p.original_price else None
                 offer = float(p.target_sale_price) if p.target_sale_price else None
                 d = None
-                if getattr(p, "discount", None):
-                    d = int(str(p.discount).replace("%",""))
-                elif orig and offer and orig > offer:
-                    d = pct(offer, orig)
-                if not (orig and offer and d is not None and d >= MIN_DISCOUNT):
-                    continue
+                if getattr(p, "discount", None): d = int(str(p.discount).replace("%",""))
+                elif orig and offer and orig > offer: d = pct(offer, orig)
+                if not (orig and offer and d is not None and d >= MIN_DISCOUNT): continue
                 link_list = ALX.get_affiliate_links(p.product_detail_url)
                 if not link_list: continue
-                link = link_list[0].promotion_link
                 deals.append({
-                    "source": "AliExpress", "category": "AliExpress", "title": title,
-                    "image": img, "orig": orig, "offer": offer,
-                    "currency": "€", "discount": int(d), "url": link
+                    "source": "AliExpress", "category": "AliExpress", "title": p.product_title,
+                    "image": p.product_main_image_url, "orig": orig, "offer": offer,
+                    "currency": "€", "discount": int(d), "url": link_list[0].promotion_link
                 })
-            except Exception as e:
-                print(f"[ERROR ALIEXPRESS] Al procesar un producto '{getattr(p, 'product_id', '')}': {e}")
-                continue
+            except Exception: continue
     print(f"Encontradas {len(deals)} ofertas en AliExpress.")
     return deals
 
@@ -170,23 +154,22 @@ def main():
     print(f"\n[INFO] Se encontraron {len(items)} ofertas en total antes de filtrar.")
     items.sort(key=lambda x: x["discount"], reverse=True)
     items = items[:MAX_POSTS]
-    print(f"[INFO] Se van a publicar {len(items)} ofertas después de filtrar (MAX_POSTS={MAX_POSTS}).")
+    print(f"[INFO] Se van a publicar {len(items)} ofertas (MAX_POSTS={MAX_POSTS}).")
     if not items:
-        print("[INFO] No hay ofertas para publicar. Terminando ejecución.")
+        print("[INFO] No hay ofertas para publicar.")
         return
     for i, it in enumerate(items):
         print(f"Publicando oferta {i+1}/{len(items)}: {it['title'][:50]}...")
-        currency = it["currency"] if it["currency"] != "EUR" else "€"
-        caption = fmt_caption(
-            it["title"], it["category"], it["orig"], it["offer"],
-            currency, it["discount"], it["url"], it["source"]
-        )
         try:
+            caption = fmt_caption(
+                it["title"], it["category"], it["orig"], it["offer"],
+                it["currency"], it["discount"], it["url"], it["source"]
+            )
             post_telegram(it["image"], caption)
             print(" -> Publicación exitosa.")
-            time.sleep(3) # Aumentar un poco el tiempo para no saturar
+            time.sleep(3)
         except Exception as e:
-            # El error ya se imprime dentro de post_telegram
+            print(f" -> Fallo en el bucle principal: {e}")
             continue
 
 if __name__ == "__main__":

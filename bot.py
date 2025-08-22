@@ -67,8 +67,8 @@ def fmt_caption(title, cat, orig, offer, currency, discount_pct, link, fuente):
     cat = escape_mdv2(cat)
     currency = escape_mdv2(currency)
     link = escape_mdv2(link)
-    line1 = f"🛍️ *{title}*  — _{cat}_"
-    line2 = f"~{orig:.2f}{currency}~  ➜  *{offer:.2f}{currency}*  (−{discount_pct}%)"
+    line1 = f"🛍️ *{title}* — _{cat}_"
+    line2 = f"~{orig:.2f}{currency}~ ➜ *{offer:.2f}{currency}* (−{discount_pct}%)"
     line3 = f"🔗 {link}"
     line4 = escape_mdv2(f"🕒 {now_cet_str()} — Precios y disponibilidad pueden cambiar.")
     line5 = escape_mdv2(f"Fuente: {fuente}.")
@@ -76,6 +76,7 @@ def fmt_caption(title, cat, orig, offer, currency, discount_pct, link, fuente):
     return "\n".join([line1, line2, line3, line4, line5, line6])
 
 def get_amazon_deals():
+    print("Buscando ofertas en Amazon...")
     deals = []
     searches = [
         ("Tecnología", "Electronics", ["ssd", "monitor", "ratón", "teclado", "smartwatch"]),
@@ -90,7 +91,9 @@ def get_amazon_deals():
                     search_index=index,
                     item_count=10
                 )
-            except Exception:
+            except Exception as e:
+                # MODIFICACIÓN: Imprimir el error de la API
+                print(f"[ERROR AMAZON] Al buscar '{kw}': {e}")
                 continue
             for it in getattr(res, "items", []) or []:
                 try:
@@ -106,7 +109,6 @@ def get_amazon_deals():
                         orig = float(price.savings.baseline_amount)
                         d = int(price.savings.percentage)
                     else:
-                        # si no hay savings, saltamos (no asegura descuento claro)
                         continue
                     if d >= MIN_DISCOUNT:
                         deals.append({
@@ -120,17 +122,23 @@ def get_amazon_deals():
                             "discount": d,
                             "url": url
                         })
-                except Exception:
+                except Exception as e:
+                    # MODIFICACIÓN: Imprimir error al procesar un item
+                    print(f"[ERROR AMAZON] Al procesar un item '{getattr(it, 'asin', '')}': {e}")
                     continue
+    print(f"Encontradas {len(deals)} ofertas en Amazon.")
     return deals
 
 def get_aliexpress_deals():
+    print("Buscando ofertas en AliExpress...")
     deals = []
     kws = ["auriculares bluetooth", "ssd", "zapatillas", "smartwatch", "masajeador", "monitor"]
     for kw in kws:
         try:
             resp = ALX.get_products(keywords=kw, target_language=models.Language.ES, page_size=10)
-        except Exception:
+        except Exception as e:
+            # MODIFICACIÓN: Imprimir el error de la API
+            print(f"[ERROR ALIEXPRESS] Al buscar '{kw}': {e}")
             continue
         for p in getattr(resp, "products", []) or []:
             try:
@@ -138,7 +146,6 @@ def get_aliexpress_deals():
                 img = p.product_main_image_url
                 orig = float(p.original_price) if p.original_price else None
                 offer = float(p.target_sale_price) if p.target_sale_price else None
-                # algunos devuelven discount en texto "35%"
                 d = None
                 if getattr(p, "discount", None):
                     d = int(str(p.discount).replace("%",""))
@@ -159,18 +166,34 @@ def get_aliexpress_deals():
                     "discount": int(d),
                     "url": link
                 })
-            except Exception:
+            except Exception as e:
+                 # MODIFICACIÓN: Imprimir error al procesar un item
+                print(f"[ERROR ALIEXPRESS] Al procesar un producto '{getattr(p, 'product_id', '')}': {e}")
                 continue
+    print(f"Encontradas {len(deals)} ofertas en AliExpress.")
     return deals
 
 def main():
     # 1) recopilar
     items = get_amazon_deals() + get_aliexpress_deals()
+    
+    # MODIFICACIÓN: Imprimir el número total de ofertas encontradas
+    print(f"\n[INFO] Se encontraron {len(items)} ofertas en total antes de filtrar.")
+
     # 2) ordenar por % desc y recortar
     items.sort(key=lambda x: x["discount"], reverse=True)
     items = items[:MAX_POSTS]
+
+    # MODIFICACIÓN: Imprimir el número de ofertas que se van a publicar
+    print(f"[INFO] Se van a publicar {len(items)} ofertas después de filtrar y ordenar (MAX_POSTS={MAX_POSTS}).")
+
     # 3) publicar
-    for it in items:
+    if not items:
+        print("[INFO] No hay ofertas para publicar. Terminando ejecución.")
+        return
+
+    for i, it in enumerate(items):
+        print(f"Publicando oferta {i+1}/{len(items)}: {it['title'][:50]}...")
         currency = it["currency"] if it["currency"] != "EUR" else "€"
         caption = fmt_caption(
             it["title"], it["category"],
@@ -178,9 +201,11 @@ def main():
         )
         try:
             post_telegram(it["image"], caption)
+            print(" -> Publicación exitosa.")
             time.sleep(2)
         except Exception as e:
-            # sigue con el siguiente
+            # MODIFICACIÓN: Imprimir error al publicar en Telegram
+            print(f" -> [ERROR TELEGRAM] Fallo al publicar: {e}")
             continue
 
 if __name__ == "__main__":

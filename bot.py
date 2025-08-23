@@ -90,7 +90,7 @@ def get_aliexpress_deals():
     for kw in kws:
         try:
             resp = ALX.get_products(keywords=kw, target_language=models.Language.ES, page_size=20)
-            print(f"Encontradas {len(resp)} ofertas en AliExpress para la palabra clave {kw}.")
+            #print(f"Encontradas {len(resp)} ofertas en AliExpress para la palabra clave {kw}.")
         except Exception as e:
             print(f"[ERROR ALIEXPRESS] Al buscar '{kw}': {e}")
             continue
@@ -98,6 +98,8 @@ def get_aliexpress_deals():
             try:
                 orig = float(p.original_price) if p.original_price else None
                 offer = float(p.target_sale_price) if p.target_sale_price else None
+
+                print(f"Producto {p.product_title}, {orig}, {offer}, {int(d)}")
                 
                 if not (orig and offer) or orig > MAX_ORIGINAL_PRICE: continue
 
@@ -107,8 +109,6 @@ def get_aliexpress_deals():
                 if orders_count < MIN_ORDERS or product_rating < MIN_RATING: continue
 
                 d = pct(offer, orig)
-                
-                print(f"Producto {p.product_title}, {orig}, {offer}, {int(d)}")
                 
                 if not (d and d >= MIN_DISCOUNT and d >= MAX_DISCOUNT_PERCENTAGE): continue
 
@@ -150,6 +150,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

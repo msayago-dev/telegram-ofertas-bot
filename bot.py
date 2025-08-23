@@ -90,6 +90,7 @@ def get_aliexpress_deals():
     for kw in kws:
         try:
             resp = ALX.get_products(keywords=kw, target_language=models.Language.ES, page_size=20)
+            print(f"Encontradas {len(resp)} ofertas en AliExpress para la palabra clave {kw}.")
         except Exception as e:
             print(f"[ERROR ALIEXPRESS] Al buscar '{kw}': {e}")
             continue
@@ -149,6 +150,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

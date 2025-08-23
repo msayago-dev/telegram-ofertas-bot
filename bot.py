@@ -99,7 +99,7 @@ def get_aliexpress_deals():
                 orig = float(p.original_price) if p.original_price else None
                 offer = float(p.target_sale_price) if p.target_sale_price else None
 
-                print(f"Producto {p.product_title}, {orig}, {offer}, {int(d)}")
+                print(f"Producto {p.product_title}, {orig}, {offer}")
                 
                 if not (orig and offer) or orig > MAX_ORIGINAL_PRICE: continue
 
@@ -150,6 +150,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

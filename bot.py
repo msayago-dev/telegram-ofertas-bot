@@ -106,11 +106,14 @@ def get_aliexpress_deals():
                 if orders_count < MIN_ORDERS or product_rating < MIN_RATING: continue
 
                 d = pct(offer, orig)
-                if not (d and d < MIN_DISCOUNT and d > MAX_DISCOUNT_PERCENTAGE): continue
+                
+                print(f"Producto {p.product_title}, {orig}, {offer}, {int(d)}")
+                
+                if not (d and d >= MIN_DISCOUNT and d >= MAX_DISCOUNT_PERCENTAGE): continue
 
                 link_list = ALX.get_affiliate_links(p.product_detail_url)
                 if not link_list: continue
-
+                    
                 deals.append({
                     "source": "AliExpress", "category": "AliExpress", "title": p.product_title,
                     "image": p.product_main_image_url, "orig": orig, "offer": offer,
@@ -146,6 +149,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

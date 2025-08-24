@@ -70,15 +70,15 @@ def get_amazon_deals():
 def get_aliexpress_deals():
     print("Buscando ofertas en AliExpress con filtros avanzados...")
     deals = []
-     kws = [
-         "cargador GaN 100W", "power bank magnética", "mini proyector portátil 4K",
-         "teclado mecánico inalámbrico", "ratón vertical ergonómico", "cámara de seguridad WiFi exterior",
-         "auriculares con cancelación de ruido activa", "rastreador de objetos Bluetooth",
-         "pistola de masaje muscular", "masajeador de cuello shiatsu", "cepillo de dientes sónico",
-         "irrigador dental portátil", "rodillo de jade facial", "humidificador ultrasónico",
-         "corrector de postura inteligente", "mochila antirrobo para portátil", "reloj inteligente con NFC",
-         "gafas de luz azul", "cinturón de cuero automático", "chaqueta cortavientos impermeable", "zapatillas de trekking"
-     ]
+    kws = [
+        "cargador GaN 100W", "power bank magnética", "mini proyector portátil 4K",
+        "teclado mecánico inalámbrico", "ratón vertical ergonómico", "cámara de seguridad WiFi exterior",
+        "auriculares con cancelación de ruido activa", "rastreador de objetos Bluetooth",
+        "pistola de masaje muscular", "masajeador de cuello shiatsu", "cepillo de dientes sónico",
+        "irrigador dental portátil", "rodillo de jade facial", "humidificador ultrasónico",
+        "corrector de postura inteligente", "mochila antirrobo para portátil", "reloj inteligente con NFC",
+        "gafas de luz azul", "cinturón de cuero automático", "chaqueta cortavientos impermeable", "zapatillas de trekking"
+    ]
     # kws = [ "tecnologia", "tecnology"]
     
     # --- FILTROS DE SENTIDO COMÚN ---
@@ -152,6 +152,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

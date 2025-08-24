@@ -106,8 +106,7 @@ def get_aliexpress_deals():
                 product_rating = float(getattr(p, 'evaluate_rate', '0.0').replace('%', '')) / 20.0
                 orders_count = int(getattr(p, 'sale_volume', 0))
 
-                print(f"Producto {p.product_title}, orig {orig}, offer {offer}, 
-                          product_rating {product_rating}, orders_count {orders_count}")
+                print(f"Producto {p.product_title}, orig {orig}, offer {offer}, product_rating {product_rating}, orders_count {orders_count}")
 
                 if orders_count < MIN_ORDERS or product_rating < MIN_RATING: continue
 
@@ -153,6 +152,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
